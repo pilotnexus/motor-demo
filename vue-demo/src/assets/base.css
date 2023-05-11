@@ -1,0 +1,6 @@
+/* color palette from <https://github.com/vuejs/theme> */
+
+.custom-button[disabled] {
+  opacity: 0.5;
+  color: gray;
+}

@@ -1,0 +1,7 @@
+/target
+**/*.rs.bk
+*~
+out/
+/basefw
+lib/
+plugins/__pycache__/*

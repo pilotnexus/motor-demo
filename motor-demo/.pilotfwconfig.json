@@ -1,0 +1,149 @@
+{
+    "compiler": "Rust",
+    "generated_by": "pilot-config v2.5.4",
+    "firmware_version": "0.5.2-beta",
+    "config": {
+        "stop_plc_on_module_error": false,
+        "watchdog_timeout": 100,
+        "enable_rtc": false
+    },
+    "modules": [
+        {
+            "slot": 1,
+            "fid": "io16",
+            "fid_nicename": "16 Digital I/Os",
+            "config": {
+                "direction": {
+                    "0-3": "in",
+                    "4-7": "in",
+                    "8-11": "in",
+                    "12-15": "in"
+                }
+            }
+        },
+        {
+            "slot": 2,
+            "fid": "aio20",
+            "fid_nicename": "20 Analog IOs",
+            "config": {
+                "ports": [
+                    {
+                        "io": 0,
+                        "direction": "in",
+                        "averages": 128,
+                        "range": "0-10V"
+                    },
+                    {
+                        "io": 1,
+                        "direction": "in",
+                        "averages": 128,
+                        "range": "0-10V"
+                    },
+                    {
+                        "io": 2,
+                        "direction": "in",
+                        "averages": 128,
+                        "range": "0-10V"
+                    },
+                    {
+                        "io": 3,
+                        "direction": "in",
+                        "averages": 128,
+                        "range": "0-10V"
+                    },
+                    {
+                        "io": 4,
+                        "direction": "in",
+                        "averages": 128,
+                        "range": "0-10V"
+                    },
+                    {
+                        "io": 5,
+                        "direction": "in",
+                        "averages": 128,
+                        "range": "0-10V"
+                    },
+                    {
+                        "io": 6,
+                        "direction": "in",
+                        "averages": 128,
+                        "range": "0-10V"
+                    },
+                    {
+                        "io": 7,
+                        "direction": "in",
+                        "averages": 128,
+                        "range": "0-10V"
+                    },
+                    {
+                        "io": 8,
+                        "direction": "in",
+                        "averages": 128,
+                        "range": "0-10V"
+                    },
+                    {
+                        "io": 9,
+                        "direction": "in",
+                        "averages": 128,
+                        "range": "0-10V"
+                    },
+                    {
+                        "io": 10,
+                        "direction": "in",
+                        "averages": 128,
+                        "range": "0-10V"
+                    },
+                    {
+                        "io": 11,
+                        "direction": "in",
+                        "averages": 128,
+                        "range": "0-10V"
+                    },
+                    {
+                        "io": 12,
+                        "direction": "in",
+                        "averages": 128,
+                        "range": "0-10V"
+                    },
+                    {
+                        "io": 13,
+                        "direction": "in",
+                        "averages": 128,
+                        "range": "0-10V"
+                    },
+                    {
+                        "io": 14,
+                        "direction": "in",
+                        "averages": 128,
+                        "range": "0-10V"
+                    },
+                    {
+                        "io": 15,
+                        "direction": "in",
+                        "averages": 128,
+                        "range": "0-10V"
+                    }
+                ]
+            }
+        },
+        {
+            "slot": 3,
+            "fid": "fpga",
+            "fid_nicename": "FPGA",
+            "plugin": "dcmctrl"
+        },
+        {
+            "slot": 4,
+            "fid": "io16",
+            "fid_nicename": "16 Digital I/Os",
+            "config": {
+                "direction": {
+                    "0-3": "in",
+                    "4-7": "in",
+                    "8-11": "in",
+                    "12-15": "in"
+                }
+            }
+        }
+    ]
+}
