@@ -1,0 +1,51 @@
+connectors:
+  - name: server
+    type: server
+    autobind: {}
+    config:
+      url: localhost 
+      ws: ws://localhost
+      endpoint: /graphql
+      port: 8080
+      playground: true
+
+values:
+  state:
+    properties:
+      datatype: int
+    bindings:
+      local:
+        class: watch
+        file: /proc/pilot/plc/variables/vars/state/value
+
+  start_machine:
+    properties:
+      datatype: bool
+    bindings:
+      local:
+        class: watch
+        file: /proc/pilot/plc/variables/vars/start_machine/value
+
+  start_demo:
+    properties:
+      datatype: bool
+    bindings:
+      local:
+        class: watch
+        file: /proc/pilot/plc/variables/vars/start_demo/value
+
+  longitudinal_axis.position:
+    properties:
+      datatype: int
+    bindings:
+      local:
+        class: watch
+        file: /proc/pilot/plc/variables/vars/longitudinal_axis/position/value
+
+  lateral_axis.position:
+    properties:
+      datatype: int
+    bindings:
+      local:
+        class: watch
+        file: /proc/pilot/plc/variables/vars/lateral_axis/position/value
