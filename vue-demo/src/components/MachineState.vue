@@ -44,7 +44,7 @@
                 <v-btn 
                     color="primary" 
                     :disabled="state!==0" 
-                    v-set="['start_machine', true]"
+                    @click="setMachineStart"
                     block
                 >
                     Start Machine
@@ -57,7 +57,7 @@
                 <v-btn 
                     color="primary" 
                     :disabled="state!==1" 
-                    v-set="['start_demo', true]"
+                    @mousedown="do_it"
                     block
                 >
                     Start Demo
@@ -68,11 +68,20 @@
 </template>
   
   <script lang="ts">
-  import { defineComponent, reactive, computed, toRefs, isReactive, watch } from 'vue';
+  import { inject, defineComponent, reactive, computed, toRefs, isReactive, watch } from 'vue';
   import { useSubscribe } from '../pilotService/useSubscribe';
 
 export default defineComponent({
-  setup() {
+   
+  setup(_, { appContext }) {
+    // Access the pilotServicePlugin instance
+    const pilot= inject('pilotService');
+  const setMachineStart = () => {
+      console.log("stat");
+      pilot.setValue('start_machine', true);
+    };
+
+
     const state = useSubscribe<int>('state', -1, value => parseInt(value));
     const lat_position = useSubscribe<int>('lateral_axis.position', 0, value => parseInt(value));
     const long_position = useSubscribe<int>('longitudinal_axis.position', 0, value => parseInt(value));
@@ -100,7 +109,8 @@ export default defineComponent({
         state,
         state_name,
         lat_position,
-        long_position
+        long_position,
+        setMachineStart
     };
   },
 });

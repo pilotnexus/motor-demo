@@ -8,7 +8,12 @@ use pilot_sys::{
     var::{Var, VarProps},
 };
 
-use crate::{plugins::motor_control::{dc_get_flag, dc_move, dc_reset, dc_set_speed, dc_set_target_position}, helper};
+use crate::{
+    helper,
+    plugins::motor_control::{
+        dc_get_flag, dc_move, dc_reset, dc_set_speed, dc_set_target_position,
+    },
+};
 
 const MIN_MOTOR_SPEED: u8 = 30;
 
@@ -21,6 +26,14 @@ bitflags! {
         const DURATION_TIMEOUT = 0b00001000;
         const ERROR = Self::CONTROLLER_ERROR.bits() | Self::SPEED_TO_LOW.bits() | Self::ENCODER_TIMEOUT.bits() | Self::DURATION_TIMEOUT.bits();
     }
+}
+
+#[derive(ConstNew, PilotAccess, PilotBindings)]
+pub struct ManualMove {
+    #[bind_ignore]
+    pub move_pos: Var<bool>,
+    #[bind_ignore]
+    pub move_neg: Var<bool>,
 }
 
 #[derive(ConstNew, PilotAccess, PilotBindings)]
@@ -45,11 +58,18 @@ pub struct MotorAxisVariables {
     ///read position flag from the FPGA motor controller
     #[bind_read(position)]
     pub position: Var<u32>,
+
+    //    #[bind_ignore]
+    //    pub manual: ManualMove,
+    #[bind_ignore]
+    pub move_pos: Var<bool>,
+    #[bind_ignore]
+    pub move_neg: Var<bool>,
 }
 
 pub struct MotorAxis<'a> {
     motor_number: u8,
-    plc_vars: &'a MotorAxisVariables,
+    pub plc_vars: &'a MotorAxisVariables,
 }
 
 ///demo implementation of a motor axis
@@ -63,6 +83,26 @@ impl<'a> MotorAxis<'a> {
         }
     }
 
+    pub async fn stop(&self) {
+        dc_set_speed(self.motor_number, 0).await;
+    }
+
+    //starts a motor movement, but does not wait for completion
+    pub async fn start_move(&self, target_pos: u32, speed: u8) -> Result<(), MotorErrorFlags> {
+        if speed < MIN_MOTOR_SPEED {
+            self.plc_vars
+                .motor_error_flags
+                .set(MotorErrorFlags::SPEED_TO_LOW.bits());
+            Err(MotorErrorFlags::SPEED_TO_LOW)
+        } else {
+            //reset errors
+            self.plc_vars.motor_error_flags.set(0);
+            //start motor
+            dc_move(self.motor_number, speed, target_pos).await;
+            Ok(())
+        }
+    }
+
     pub async fn move_axis_to_position(
         &self,
         target_pos: u32,
@@ -72,7 +112,9 @@ impl<'a> MotorAxis<'a> {
         let speed = 150; //we use a fixed speed of 150 in this example
 
         if speed < MIN_MOTOR_SPEED {
-            self.plc_vars.motor_error_flags.set(MotorErrorFlags::SPEED_TO_LOW.bits());
+            self.plc_vars
+                .motor_error_flags
+                .set(MotorErrorFlags::SPEED_TO_LOW.bits());
             Err(MotorErrorFlags::SPEED_TO_LOW)
         } else {
             //reset errors
@@ -92,7 +134,8 @@ impl<'a> MotorAxis<'a> {
                 } else {
                     None //we are still moving and have no timeout
                 }
-            }).await;
+            })
+            .await;
 
             //for better clarity we transform the result in a second step, unifying the MotorErrorFlags
             let result = match result {
@@ -104,7 +147,7 @@ impl<'a> MotorAxis<'a> {
                     dc_set_speed(self.motor_number, 0).await; //we stop the motor right now
                     wait_next_cycle().await; //wait for the next PLC cycle
                     Err(MotorErrorFlags::DURATION_TIMEOUT)
-                }, //the motor took too long to reach the target position
+                } //the motor took too long to reach the target position
             };
 
             //lets set the error flags if errors occured

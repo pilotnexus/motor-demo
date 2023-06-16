@@ -18,9 +18,11 @@ statemachine! {
     transitions: {
         *InitialState + InitializedEvent  = IdleState,
         IdleState + StartMoveEvent = MovingState,
+        IdleState + ManualMoveEvent = ManualState,
+        ManualState + ExitManualMoveEvent = IdleState,
         MovingState + MoveCompleteEvent = IdleState,
         MovingState + MoveErrorEvent = ErrorState,
-        //ErrorState + ResetEvent = IdleState, //-> TODO: this should be implemented to recover from the ErrorState
+        ErrorState + ResetEvent = IdleState,
     }
 }
 
@@ -52,6 +54,7 @@ impl<'a> PilotStateMachine<'a> {
             States::IdleState => 1,
             States::MovingState => 2,
             States::ErrorState => 3,
+            States::ManualState => 4,
         }
     }
 

@@ -7,13 +7,13 @@ use pilot_sys::loop_async;
 use pilot_sys::time::{wait, wait_next_cycle};
 use pilot_sys::var::{NumVar, SubscribeMode, Var, VarChange, VarProps};
 mod pilot;
+use bitflags::bitflags;
 use core::time::Duration;
+use futures::future::{self, Either};
 use pilot::variables::PlcVars;
-use pilot_sys::futures::join;
+use pilot_sys::futures::{join, pin_mut, select_biased, FutureExt};
 use pilot_sys::*;
 use statemachine::{Context, StateMachine};
-
-use bitflags::bitflags;
 
 use crate::axis::motoraxis;
 use crate::helper::host_set;
@@ -21,6 +21,8 @@ use crate::statemachine::{Events, PilotStateMachine, States};
 
 mod axis;
 mod helper;
+mod manual_task;
+mod moving_task;
 mod plugins;
 mod statemachine;
 
@@ -57,45 +59,64 @@ pub async fn main_task(v: &PlcVars) {
     }
 
     //we will only get to this point if we are in IdleState
-    let lateral_target_positions: [u32; 4] = [100, 50, 200, 0];
-    let longitudinal_target_positions: [u32; 4] = [50, 10, 200, 0];
-    let timeout = Duration::from_secs(10);
 
-    //do this forever
+    //this is the main loop that starts all the other tasks as required
     loop_async! {{
 
-        host_set(&v.start_demo).await; //we wait for the button press
 
-        //here are two ways of using if let, the first one matches on Ok, the second one on Err.
-        if let Ok(_) = sm.process_event(Events::StartMoveEvent) {
+        let start_demo = host_set(&v.start_demo); //we wait for the button press
+        let manual_mode = async {
+            v.manual_mode.pos().await;   //or a change of manual_mode to 1
+        };
+                                                  //
+        // 'select' requires Future + Unpin bounds
+        pin_mut!(start_demo);
+        pin_mut!(manual_mode);
 
-            for idx in 0..core::cmp::min(lateral_target_positions.len(),
-                                         longitudinal_target_positions.len()) {
-
-                //we start both tasks and wait for both to finish the movement before we start the next using join!
-                let (lateral_result, longitudinal_result) =
-                    join!(
-                        lateral_axis.move_axis_to_position(lateral_target_positions[idx], timeout),
-                        longitudinal_axis.move_axis_to_position(longitudinal_target_positions[idx], timeout));
-
-                //look if there was an error
-                match (lateral_result, longitudinal_result) {
-                    (Ok(()), Ok(())) => { //no error occured in both motors
-                    },
-                    _ => { // some error occured
-                        if let Err(_) = sm.process_event(Events::MoveErrorEvent) {
-                            //TODO: handle process_event error
-                        }
-                        break;
+        match future::select(start_demo, manual_mode).await {
+            Either::Left(((), _)) => {
+                // don't continue polling toggle_outputs
+                if let Err(_) = moving_task::run(&mut sm, &lateral_axis, &longitudinal_axis).await {
+                    //we are in the error state, wait for reset
+                    host_set(&v.reset_error).await;
+                    if let Err(_) = sm.process_event(Events::ResetEvent) {
+                        //TODO handle move to reset event error
                     }
                 }
             }
+            Either::Right(((), _manual_mode)) => {
+                if let Ok(_) = sm.process_event(Events::ManualMoveEvent) {
 
-            if let Err(_) = sm.process_event(Events::MoveCompleteEvent) {
-                //TODO: handle process_event error
-            }
-        } else {
-            //TODO: handle process_event error
+                println!("entering manual state");
+                // task that waits until manual_mode changes from 1 to 0
+                let manual_mode_wait_neg = async {
+                    v.manual_mode.neg().await;
+                }.fuse();
+                let lateral_task = manual_task::run(&lateral_axis).fuse();
+                let longitudinal_task = manual_task::run(&longitudinal_axis).fuse();
+
+                pin_mut!(manual_mode_wait_neg);
+                pin_mut!(lateral_task);
+                pin_mut!(longitudinal_task);
+
+                select_biased! {
+                   () = manual_mode_wait_neg => {
+                     },
+                     () = lateral_task => {
+                     },
+                     () = longitudinal_task => {
+                     },
+                  }
+                }
+
+                if let Ok(_) = sm.process_event(Events::ExitManualMoveEvent) {
+                  println!("leaving manual state");
+                } else {
+                  println!("error leaving manual state");
+                }
+
+
+            },
         }
     }}
 }
